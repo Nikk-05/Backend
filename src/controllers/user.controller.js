@@ -100,8 +100,10 @@ const loginUser = asyncHandler(async (req, res) => {
   // send secure cookies to send tokens 
   // send response that user logged in
   const { email, username, password } = req.body
+  console.log(req.body)
+  // console.log(email,username)
 
-  if (!username || !email) {
+  if (!(username || email)) {
     throw new APIError(400, "Username or Email is required")
   }
   // To get the user either with username or email
