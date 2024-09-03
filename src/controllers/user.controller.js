@@ -100,9 +100,6 @@ const loginUser = asyncHandler(async (req, res) => {
   // send secure cookies to send tokens 
   // send response that user logged in
   const { email, username, password } = req.body
-  console.log(req.body)
-  // console.log(email,username)
-
   if (!(username || email)) {
     throw new APIError(400, "Username or Email is required")
   }
@@ -119,7 +116,9 @@ const loginUser = asyncHandler(async (req, res) => {
   if (!isPasswordValid) {
     throw new APIError(404, "Invalid credentials")
   }
+  console.log(user.id)
   const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id)
+  // console.log(accessToken, refreshToken)
 
   // user is empty so we need to update by object or trigger a DB call
   // DB call
@@ -151,9 +150,9 @@ const logoutUser = asyncHandler(async (req, res) => {
   // As we don't have access to user so we used a middleware and created a object to get access. 
   const user = await User.findByIdAndUpdate(req.user._id,
     {
-      $set: 
+      $unset: 
       {
-        refreshToken: undefined
+        refreshToken: 1 // This will remove the vakue from database
       }
     },
     {
@@ -163,7 +162,7 @@ const logoutUser = asyncHandler(async (req, res) => {
   )
   const options = {
     httpOnly: true,
-    secure:true
+    secure: true
   }
   return res.status(200)
   .clearCookie("refreshToken",options)
@@ -172,6 +171,8 @@ const logoutUser = asyncHandler(async (req, res) => {
     new APIResponse(200, {},"User Logged out successfully")
   )
 })
+
+
 
 
 export { registerUser, loginUser, logoutUser } 
