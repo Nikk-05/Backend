@@ -150,14 +150,14 @@ const logoutUser = asyncHandler(async (req, res) => {
   // As we don't have access to user so we used a middleware and created a object to get access. 
   const user = await User.findByIdAndUpdate(req.user._id,
     {
-      $unset: 
+      $unset:
       {
         refreshToken: 1 // This will remove the vakue from database
       }
     },
     {
       // By default, findOneAndUpdate() returns the document as it was before update was applied. If you set new: true, findOneAndUpdate() will instead give you the object after update was applied.
-      new: true 
+      new: true
     }
   )
   const options = {
@@ -165,14 +165,97 @@ const logoutUser = asyncHandler(async (req, res) => {
     secure: true
   }
   return res.status(200)
-  .clearCookie("refreshToken",options)
-  .clearCookie("accessToken",options)
-  .json(
-    new APIResponse(200, {},"User Logged out successfully")
-  )
+    .clearCookie("refreshToken", options)
+    .clearCookie("accessToken", options)
+    .json(
+      new APIResponse(200, {}, "User Logged out successfully")
+    )
 })
 
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+  // To verify user is logged in or not using verifyJWT middleware
+  const { oldPassword, newPassword } = req.body
+  const user = await User.findById(req.user?._id)
+  const isPasswordValid = await user.isPasswordCorrect(oldPassword)
+  if (!isPasswordValid) {
+    throw new APIError(401, "Invalid old password")
+  }
+  user.password = newPassword // new password is being set only
+  await user.save({ validateBeforeSave: false }) // it will be saved after decryption into the database
+  return res.status(200)
+    .json(new APIResponse(200, {}, "Password changed successfully"))
+})
 
+const getCurrentUser = asyncHandler(async (req, res) => {
+  // To verify user is logged in or not using verifyJWT middleware
+  return res.status(200)
+    .json(new APIResponse(200, req.user, "Current usser data"))
+})
 
+const updateAccountDetails = asyncHandler(async (req, res) => {
+  // To verify user is logged in or not using verifyJWT middleware
+  const { fullName, email } = req.body
 
-export { registerUser, loginUser, logoutUser } 
+  if (!fullName || !email) {
+    throw new APIError(400, "Full Name and Email are required")
+  }
+  const user = await User.findByIdAndUpdate(req.user._id,
+    {
+      $set: {
+        fullName: fullName,
+        email: email
+      }
+    },
+    { new: true } // get updated user
+  ).select("-password -refreshToken")
+
+  return res.status(200)
+    .json(new APIResponse(200, user, "Account details updated successfully"))
+
+})
+
+const updateAvatarFile = asyncHandler(async (req, res) => {
+  // get file from user using multer middleware
+  const avatarLocalPath = req.file?.path
+  if (!avatarLocalPath) {
+    throw new APIError(400, "Avatar file is required")
+  }
+  const avatar = await uploadDataCloudinary(avatarLocalPath)
+  if (!avatar.url) {
+    throw new APIError(400, "Error while uploading avatar")
+  }
+  const user = await User.findByIdAndUpdate(req.user._id,
+    {
+      $set: {
+        avatar: avatar.url
+      }
+    },
+    {new: true}
+  ).select("-password -refreshToken")
+  return res.status(200)
+    .json(new APIResponse(200, user, "Avatar updated successfully"))
+})
+
+const updateCoverFile = asyncHandler(async (req, res) => {
+  // get file from user using multer middleware
+  const coverLocalPath = req.file?.path
+  if (!coverLocalPath) {
+    throw new APIError(400, "Cover file is required")
+  }
+  const coverImage = await uploadDataCloudinary(coverLocalPath)
+  if (!coverImage.url) {
+    throw new APIError(400, "Error while uploading Cover Image")
+  }
+  const user = await User.findByIdAndUpdate(req.user._id,
+    {
+      $set: {
+        coverImage: coverImage.url
+      }
+    },
+    {new: true}
+  ).select("-password -refreshToken")
+  return res.status(200)
+    .json(new APIResponse(200, user, "Cover Image updated successfully"))
+})
+
+export { registerUser, loginUser, logoutUser, changeCurrentPassword, getCurrentUser, updateAccountDetails }
