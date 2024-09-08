@@ -358,7 +358,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     .json(new APIResponse(200, channel[0], "User channel fetched successfully")) // as we have only one user that's why we are sending channel[0] as object.
 })
 
-const getWatchHistory = asyncHandler(async (req, res) => {
+const getUserWatchHistory = asyncHandler(async (req, res) => {
   const user = await User.aggregate([
     {
       $match: {
@@ -417,5 +417,5 @@ export {
   updateAvatarFile,
   updateCoverFile,
   getUserChannelProfile,
-  getWatchHistory 
+  getUserWatchHistory 
 }
