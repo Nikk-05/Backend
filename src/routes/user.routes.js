@@ -20,9 +20,11 @@ router.route('/register').post(
 router.route('/login').post(loginUser)
 // Secure routes
 router.route('/logout').post(verifyJWT,logoutUser)
+router.route("/refresh-token").post(refreshAccessToken)
 router.route('/newpassword').post(verifyJWT,changeCurrentPassword)
 router.route('/details').get(verifyJWT,getCurrentUser)
 router.route('update').get(verifyJWT,updateAccountDetails)
+
 
 
 

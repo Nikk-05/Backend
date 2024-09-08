@@ -172,6 +172,45 @@ const logoutUser = asyncHandler(async (req, res) => {
     )
 })
 
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  const oldRefreshToken = req.cookies.refreshToken || req.body.refreshToken
+  if(!oldRefreshToken){
+    throw new APIError(401, "Refresh token is missing")
+  }
+  try{
+    // Verify that the refresh token is not being temped in between so that JWT checks its signature with secret key
+    const decodedToken = jwt.verify(
+      oldRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET,
+      {
+        expiresIn: "15m"
+      }
+    )
+    console.log(decodedToken)
+
+    const user = await User.findById(decodedToken?._id)
+    if (!user) {
+      throw new APIError(401, "Invalid refresh token")
+    }
+    if(oldRefreshToken !== user?.refreshToken){
+      throw new APIError(401,"Refresh token is expired")
+    }
+    const options = {
+      secure : true,
+      httpOnly: true
+    }
+    const {accessToken, newRefreshToken} = await generateAccessAndRefreshToken(user._id)
+    return res.status(200)
+    .cookies(newRefreshToken,options)
+    .cookies(accessToken,options)
+    .json(new APIResponse(200, {accessToken: accessToken, refreshToken: newRefreshToken},"Access Token refreshed"))
+  }
+  catch(error){
+    throw new APIError(500, "Failed to refresh token")
+  }
+
+})
+
 const changeCurrentPassword = asyncHandler(async (req, res) => {
   // To verify user is logged in or not using verifyJWT middleware
   const { oldPassword, newPassword } = req.body
@@ -230,7 +269,7 @@ const updateAvatarFile = asyncHandler(async (req, res) => {
         avatar: avatar.url
       }
     },
-    {new: true}
+    { new: true }
   ).select("-password -refreshToken")
   return res.status(200)
     .json(new APIResponse(200, user, "Avatar updated successfully"))
@@ -252,47 +291,47 @@ const updateCoverFile = asyncHandler(async (req, res) => {
         coverImage: coverImage.url
       }
     },
-    {new: true}
+    { new: true }
   ).select("-password -refreshToken")
   return res.status(200)
     .json(new APIResponse(200, user, "Cover Image updated successfully"))
 })
 
-const getUserChannelProfile = asyncHandler(async (req,res) =>{
-  const {username} = req.params
-  if(!username?.trim()){
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+  const { username } = req.params
+  if (!username?.trim()) {
     throw new APIError(400, "Username is missing")
   }
   const channel = await User.aggregate([
     {
-      $match:{
-        username : username?.toLowerCase()
+      $match: {
+        username: username?.toLowerCase()
       },
       // How many subscriber user have
-      $lookup:{
-        from:"subscriptions", //model converts every thing in lowercase and in pural.
-        localfield:"_id",
-        foreignField:"channel",
-        as:"subscribers"
+      $lookup: {
+        from: "subscriptions", //model converts every thing in lowercase and in pural.
+        localfield: "_id",
+        foreignField: "channel",
+        as: "subscribers"
       },
       // how many channel user have subscribed
-      $lookup:{
-        from:"subscriptions",
-        localfield:"_id",
-        foreignField:"subscriber",
-        as:"subscribedTo"
+      $lookup: {
+        from: "subscriptions",
+        localfield: "_id",
+        foreignField: "subscriber",
+        as: "subscribedTo"
       },
       // add to fields
-      $addFields:{
-        subscribersCount:{
-          $size:"$subscribers"
+      $addFields: {
+        subscribersCount: {
+          $size: "$subscribers"
         },
-        subscribedToCount:{
-          $size:"$subscribedTo"
+        subscribedToCount: {
+          $size: "$subscribedTo"
         },
-        isSubscribed:{
-          $cond:{
-            if: {$in:[req.user?._id,"$subscribers.subscriber"]},
+        isSubscribed: {
+          $cond: {
+            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
             then: true,
             else: false
           }
@@ -301,23 +340,82 @@ const getUserChannelProfile = asyncHandler(async (req,res) =>{
     },
     {
       // Customize which field can be sent to UI
-      $project:{
-        username:1,
-        avatar:1,
-        coverImage:1,
-        fullName:1,
-        subscribersCount:1,
-        subscribedToCount:1,
-        isSubscribed:1
+      $project: {
+        username: 1,
+        avatar: 1,
+        coverImage: 1,
+        fullName: 1,
+        subscribersCount: 1,
+        subscribedToCount: 1,
+        isSubscribed: 1
       }
     }
   ])
-  if(!channel?.length){
+  if (!channel?.length) {
     throw new APIError(404, "Channel does not exist")
   }
   return res.status(200)
-  .json(new APIResponse(200,channel[0],"User channel fetched successfully")) // as we have only one user that's why we are sending channel[0] as object.
+    .json(new APIResponse(200, channel[0], "User channel fetched successfully")) // as we have only one user that's why we are sending channel[0] as object.
+})
+
+const getWatchHistory = asyncHandler(async (req, res) => {
+  const user = await User.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(req.user?._id)
+      },
+      $lookup: {
+        from: "vides",
+        localField: "watchHistory",
+        foreignField: "_id",
+        as: "watchHistory",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
+                {
+                  $project: {
+                    fullName: 1,
+                    username: 1,
+                    avatar: 1
+                  }
+                }
+              ]
+            }
+          },
+          {
+            $addFields: {
+              owner: {
+                $first: "$owner"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ])
+  if (!user?.length) {
+    throw new APIError(404, "User does not exist")
+  }
+  return res.status(200)
+    .json(new APIResponse(200, user[0].watchHistory, "Watch History feteched successfully"))
 })
 
 
-export { registerUser, loginUser, logoutUser, changeCurrentPassword, getCurrentUser, updateAccountDetails, getUserChannelProfile }
+export { 
+  registerUser, 
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
+  changeCurrentPassword,
+  getCurrentUser,
+  updateAccountDetails,
+  updateAvatarFile,
+  updateCoverFile,
+  getUserChannelProfile,
+  getWatchHistory 
+}
