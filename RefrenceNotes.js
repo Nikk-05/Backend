@@ -26,3 +26,9 @@
 //     }
 // ]
 // Read and learn about aggregation pipeline.
+//-----------------Big Picture---------------------//
+/*
+Create function for forget password
+Delete the registered user
+
+*/

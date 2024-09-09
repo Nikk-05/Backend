@@ -2,6 +2,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { APIError } from '../utils/APIError.js'
 import { APIResponse } from '../utils/APIResponse.js';
 import { User } from '../models/User.models.js'
+import bcrypt from 'bcrypt'
 import { uploadDataCloudinary } from '../utils/cloudinary.js'
 
 const generateAccessAndRefreshToken = async (userId) => {
@@ -219,7 +220,8 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   if (!isPasswordValid) {
     throw new APIError(401, "Invalid old password")
   }
-  user.password = newPassword // new password is being set only
+  console.log(isPasswordValid, user)
+  user.password = newPassword//await bcrypt.hash(newPassword, 10) // new password is being set only
   await user.save({ validateBeforeSave: false }) // it will be saved after decryption into the database
   return res.status(200)
     .json(new APIResponse(200, {}, "Password changed successfully"))
@@ -310,14 +312,14 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
       // How many subscriber user have
       $lookup: {
         from: "subscriptions", //model converts every thing in lowercase and in pural.
-        localfield: "_id",
+        localField: "_id",
         foreignField: "channel",
         as: "subscribers"
       },
       // how many channel user have subscribed
       $lookup: {
         from: "subscriptions",
-        localfield: "_id",
+        localField: "_id",
         foreignField: "subscriber",
         as: "subscribedTo"
       },

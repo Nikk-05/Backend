@@ -25,11 +25,14 @@ app.use(cookieParser())
 
 
 // import Routes
-import userRouter from './routes/user.routes.js';
+import userRouter from './routes/user.routes.js'
+import videoRouter from "./routes/video.routes.js"
 
 // routes declaration
 app.use('/api/v1/users', userRouter); // we seperated the router then we have to this
 // This will be url
 // http://localhost:3010/api/v1/users/register
+app.use('/api/v1/videos', videoRouter);
+
 
 export {app} 
