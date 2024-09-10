@@ -1,14 +1,17 @@
 import { Router } from 'express'
 import {upload} from '../middlewares/multer.middleware.js'
-import { publishAVideo } from '../controllers/video.controller.js'
+import { getAllVideos, getVideoById, publishAVideo } from '../controllers/video.controller.js'
 import { verifyJWT } from '../middlewares/auth.middleware.js'
 
 const router = Router();
 
 router.use(verifyJWT) // Middleware to apply on every route
 
-// Upload video file
-router.route('/all')
+// Search for videos
+router.route('/search').get(getAllVideos)
+
+// Publish a new video
+router.route('/upload')
 .post(upload.fields([
         {
             name:'videoFile',
@@ -23,6 +26,10 @@ router.route('/all')
     ]),
     publishAVideo
 )
+
+router.route('/:id')
+.get(getVideoById)
+
 
 
 export default router;
