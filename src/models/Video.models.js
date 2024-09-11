@@ -38,6 +38,11 @@ const VideoSchema = new mongoose.Schema({
 
 },{timestamps:true})
 
+// Create a text index on `title` and `description`
+// This will help to find video using query string
+VideoSchema.index({ title: 'text', description: 'text' });
+
+
 VideoSchema.plugin(mongooseAggregatePaginate);
 
 export const Video = mongoose.model('Video',VideoSchema);
