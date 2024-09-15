@@ -187,7 +187,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         expiresIn: "15m"
       }
     )
-    console.log(decodedToken)
+    // console.log(decodedToken)
 
     const user = await User.findById(decodedToken?._id)
     if (!user) {

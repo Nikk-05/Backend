@@ -5,6 +5,7 @@ import mongoose, { isValidObjectId } from "mongoose"
 import { APIError } from "../utils/APIError.js"
 import { APIResponse } from "../utils/APIResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
+import { application } from "express";
 
 
 const getAllVideos = asyncHandler(async (req, res) => {
@@ -41,7 +42,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
         .sort({ [sort]: 1 })
         .skip((pageNumber - 1) * limitNumber)
         .limit(limitNumber)
-        
+
     // find in mongoose return array of objects and findOne will return first object or null   
     // Videos will return in form of an array so we need to check for length 
     if(!videos.length){
@@ -110,23 +111,55 @@ const getVideoById = asyncHandler(async (req, res) => {
 const updateVideo = asyncHandler(async (req, res) => {
     const { id } = req.params
     //TODO: update video details like title, description, thumbnail
-
-
+    console.log(req)
+    const {title, description, thumbnail} = req.body
+    const videoData = await Video.findByIdAndUpdate(
+        id,
+        {
+            $set:{
+                title:title,
+                description:description,
+                thumbnail:thumbnail
+            }
+        },
+        {new: true}
+    )
+    if(!videoData){
+        throw new APIError(404, "Video details are not updated");
+    }
+    return res.status(200)
+    .json(new APIResponse(200, videoData, "Details updated successfully"))
 })
 
 const deleteVideo = asyncHandler(async (req, res) => {
     const { id } = req.params
     //TODO: delete video
+    const videoData = await Video.findByIdAndDelete(id)
+    if(!videoData){
+        throw new APIError(404, "Video not found");
+    }
+    return res.status(200)
+    .json(new APIResponse(200, videoData, "Video deleted successfully"))
 })
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
     const { videoId } = req.params
+    //TODO: toggle publish status
+    const videoData = await Video.findByIdAndUpdate(
+        id,
+        {
+           $set :{
+             isPublished:!videoData.isPublished
+           }
+        },
+        {
+            new : true
+        }
+    )
+    return res.status(200)
+    .json(new APIResponse(200, videoData,"Status toggled successfully"))
+
 })
-
-const uploadVideo = asyncHandler(async (req, res) => {
-
-})
-
 export {
     getAllVideos,
     publishAVideo,
